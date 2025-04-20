@@ -1,6 +1,9 @@
 out
 dist
 node_modules
+.vscodeignore
+.vscode-test.mjs
 .vscode-test/
 *.vsix
 *.log
+CHANGELOG.md
