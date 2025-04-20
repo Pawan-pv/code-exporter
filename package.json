@@ -1,0 +1,86 @@
+{
+  "name": "codebaseexporter",
+  "displayName": "CodebaseExporter",
+  "description": "Exports user-written codebase into a customizable .txt file",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.99.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onView:codeExporterFileExplorer",
+    "onCommand:codebaseexporter.batchExport",
+    "onCommand:codebaseexporter.undoLastAction",
+    "onCommand:codebaseexporter.copyOutputContent"
+  ],
+  "contributes": {
+    "views": {
+      "explorer": [
+        {
+          "id": "codeExporterFileExplorer",
+          "name": "Code Exporter Files",
+          "icon": "file-code"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "codebaseexporter.batchExport",
+        "title": "Batch Export Selected Files"
+      },
+      {
+        "command": "codebaseexporter.undoLastAction",
+        "title": "Undo Last Action"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "codebaseexporter.batchExport",
+          "when": "view == codeExporterFileExplorer",
+          "group": "navigation"
+        },
+        {
+          "command": "codebaseexporter.undoLastAction",
+          "when": "view == codeExporterFileExplorer",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "CodebaseExporter",
+      "properties": {
+        "codebaseExporter.outputFilePath": {
+          "type": "string",
+          "default": "codebase.txt",
+          "description": "Path to the output file (relative to workspace root)"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "vscode-test",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "20.x",
+    "@types/sinon": "^17.0.4",
+    "@types/vscode": "^1.99.0",
+    "@typescript-eslint/eslint-plugin": "^8.28.0",
+    "@typescript-eslint/parser": "^8.28.0",
+    "@vscode/test-cli": "^0.0.10",
+    "@vscode/test-electron": "^2.4.1",
+    "eslint": "^9.23.0",
+    "sinon": "^20.0.0",
+    "typescript": "^5.8.2"
+  }
+}

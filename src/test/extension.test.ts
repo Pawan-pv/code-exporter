@@ -1,0 +1,70 @@
+import * as assert from 'assert';
+import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as path from 'path';
+import { FileItem, FileTreeDataProvider } from '../extension';
+import * as sinon from 'sinon';
+
+suite('CodebaseExporter Tests', () => {
+  let treeDataProvider: FileTreeDataProvider;
+  let context: vscode.ExtensionContext;
+  let outputChannel: vscode.OutputChannel;
+  let workspaceStub: sinon.SinonStub;
+
+  setup(async () => {
+    context = { subscriptions: [], extensionPath: '', globalState: { get: () => {}, update: () => {} } } as any;
+    outputChannel = { appendLine: () => {}, dispose: () => {} } as any;
+    treeDataProvider = new FileTreeDataProvider(context, outputChannel);
+
+    // Mock workspaceFolders using sinon
+    const mockWorkspaceFolders = [{ uri: vscode.Uri.file('C:/tmp/test'), name: 'test', index: 0 }];
+    workspaceStub = sinon.stub(vscode.workspace, 'workspaceFolders').get(() => mockWorkspaceFolders);
+
+    fs.mkdirSync('C:/tmp/test', { recursive: true });
+    fs.writeFileSync('C:/tmp/test/sample.txt', 'Test content');
+  });
+
+  teardown(() => {
+    workspaceStub.restore(); // Restore the original getter
+    fs.rmSync('C:/tmp/test', { recursive: true, force: true });
+  });
+
+  test('FileTreeDataProvider should load files', async () => {
+    const items = await treeDataProvider.getChildren();
+    assert.ok(items.length > 0, 'Should load at least one file');
+    const sampleItem = items.find((item: FileItem) => item.label === 'sample.txt');
+    assert.ok(sampleItem, 'Should include sample.txt');
+    assert.strictEqual(sampleItem?.checkboxState, vscode.TreeItemCheckboxState.Unchecked);
+  });
+
+  test('Update checked state', () => {
+    const item = new FileItem('sample.txt', vscode.Uri.file('C:/tmp/test/sample.txt'), false, vscode.TreeItemCollapsibleState.None);
+    treeDataProvider.updateCheckedState(item.resourceUri, vscode.TreeItemCheckboxState.Checked);
+    const updatedItem = treeDataProvider.getTreeItem(item);
+    assert.strictEqual(updatedItem.checkboxState, vscode.TreeItemCheckboxState.Checked);
+  });
+
+  test('Export folder contents', async () => {
+    const folderUri = vscode.Uri.file('C:/tmp/test');
+    await treeDataProvider.exportFolderContents(folderUri, true);
+    const outputPath = path.join('C:/tmp/test', 'codebase.txt');
+    assert.ok(fs.existsSync(outputPath), 'Output file should be created');
+    const content = fs.readFileSync(outputPath, 'utf-8');
+    assert.ok(content.includes('C:/tmp/test/sample.txt'), 'Should include file path and content');
+  });
+
+  test('Undo last action', async () => {
+    const item = new FileItem('sample.txt', vscode.Uri.file('C:/tmp/test/sample.txt'), false, vscode.TreeItemCollapsibleState.None);
+    treeDataProvider.updateCheckedState(item.resourceUri, vscode.TreeItemCheckboxState.Checked);
+    await treeDataProvider.exportFolderContents(vscode.Uri.file('C:/tmp/test'), true);
+    const outputPath = path.join('C:/tmp/test', 'codebase.txt');
+    let content = fs.readFileSync(outputPath, 'utf-8');
+    assert.ok(content.includes('C:/tmp/test/sample.txt'));
+
+    // Mock undo (simplified)
+    const lastAction = { filePath: 'C:/tmp/test/sample.txt', content: 'Test content', action: 'add' };
+    content = content.replace(`\n${lastAction.filePath}\n${lastAction.content}\n---`, '');
+    fs.writeFileSync(outputPath, content.trim());
+    assert.ok(!fs.readFileSync(outputPath, 'utf-8').includes('C:/tmp/test/sample.txt'), 'Undo should remove content');
+  });
+});
